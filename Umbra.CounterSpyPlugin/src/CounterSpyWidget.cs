@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Game.ClientState.Objects.SubKinds;
@@ -37,6 +37,9 @@ public class CounterSpyWidget(
 
     protected override void OnLoad()
     {
+        Popup.Add(new MenuPopup.Button("Targeting filters...") {
+            OnClick = () => Framework.Service<CounterSpySettings>().Open(),
+        });
         Popup.Add(_playerGroup);
         Popup.Add(_npcGroup);
 
@@ -59,6 +62,10 @@ public class CounterSpyWidget(
                 : 0u;
 
         SetGameIconId(iconId);
+
+        // Remove stale entries even when filtering removes the final target.
+        UpdateMenuItems(playerList, _playerGroup);
+        UpdateMenuItems(npcList, _npcGroup);
 
         IsVisible = !(isEmpty && GetConfigValue<bool>("HideIfEmpty"));
         if (!IsVisible) return;
@@ -86,8 +93,6 @@ public class CounterSpyWidget(
         var label = $"{playersLabel} {npcLabel}";
         SetText(label.Trim());
 
-        UpdateMenuItems(playerList, _playerGroup);
-        UpdateMenuItems(npcList, _npcGroup);
     }
 
     private void UpdateMenuItems(List<IGameObject> list, MenuPopup.Group group)

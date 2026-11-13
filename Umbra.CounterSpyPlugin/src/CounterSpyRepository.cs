@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Plugin.Services;
 using Umbra.Common;
@@ -13,10 +14,14 @@ namespace Umbra.CounterSpyPlugin;
 [Service]
 internal sealed class CounterSpyRepository(
     IObjectTable objectTable,
+    IPartyList   party,
+    CounterSpySettings settings,
     IPlayer      player
 ) : IDisposable
 {
     private readonly Dictionary<ulong, IGameObject> _objects = [];
+
+    private readonly TargetFilter _filter = new();
 
     public bool IsPreviewMode { get; set; }
 
@@ -25,7 +30,7 @@ internal sealed class CounterSpyRepository(
         lock (_objects) {
             return _objects
                 .Values.Where(
-                    obj => (players && obj.ObjectKind == ObjectKind.Player)
+                    obj => (players && obj is IPlayerCharacter)
                         || (npcs && obj.ObjectKind == ObjectKind.BattleNpc)
                 )
                 .ToList();
@@ -42,13 +47,14 @@ internal sealed class CounterSpyRepository(
     [OnTick]
     private void OnTick()
     {
-        if (null == objectTable.LocalPlayer) return;
-
         lock (_objects) {
-            if (player.IsBetweenAreas || player.IsInCutscene) {
+            if (objectTable.LocalPlayer == null || player.IsBetweenAreas || player.IsInCutscene) {
                 _objects.Clear();
                 return;
             }
+
+            _filter.SetNames(settings.Blacklist);
+            var partyIds = party.Select(member => member.EntityId).Where(id => id != 0 && id != 0xE0000000).ToHashSet();
 
             ulong       playerId  = objectTable.LocalPlayer.GameObjectId;
             Vector3     playerPos = objectTable.LocalPlayer.Position;
@@ -60,10 +66,12 @@ internal sealed class CounterSpyRepository(
 
             foreach (var obj in objects) {
                 if (obj.IsValid()
-                    && (obj.ObjectKind is ObjectKind.Player or ObjectKind.BattleNpc)
+                    && (obj is IPlayerCharacter || obj.ObjectKind == ObjectKind.BattleNpc)
                     && obj.TargetObjectId != obj.GameObjectId
                     && obj.GameObjectId != playerId
                     && (IsPreviewMode || obj.TargetObjectId == playerId)
+                    && !_filter.ShouldIgnore(obj is IPlayerCharacter, obj.Name.TextValue,
+                        settings.IgnoreParty, partyIds.Contains(obj.EntityId))
                     && !obj.IsDead
                    ) {
                     ids.Add(obj.GameObjectId);
