@@ -1,0 +1,22 @@
+using Umbra.CounterSpyPlugin;
+var f = new TargetFilter();
+var count = 0;
+void Check(bool result, string name) { if (!result) throw new Exception(name); count++; }
+Check(!f.ShouldIgnore(true, "Alice Example", false, false), "Empty defaults");
+f.SetNames(" Alice Example\r\nBOB EXAMPLE; Cara Example, Alice Example\n ; ");
+Check(f.ShouldIgnore(true, "alice example", false, false), "Case-insensitive full name");
+Check(f.ShouldIgnore(true, "Bob Example", false, false), "Newline separator");
+Check(f.ShouldIgnore(true, "Cara Example", false, false), "Semicolon separator");
+Check(!f.ShouldIgnore(true, "Alice", false, false), "No partial matches");
+Check(!f.ShouldIgnore(true, "Alice Example Two", false, false), "No prefix matches");
+Check(!f.ShouldIgnore(false, "Alice Example", true, true), "NPCs unaffected");
+Check(f.ShouldIgnore(true, "Other Person", true, true), "Party toggle on");
+Check(!f.ShouldIgnore(true, "Other Person", false, true), "Party toggle off");
+Check(!f.ShouldIgnore(true, "Other Person", true, false), "Leaving party restores target");
+Check(f.ShouldIgnore(true, "Alice Example", false, true), "Blacklist independent of party toggle");
+f.SetNames("New Person");
+Check(!f.ShouldIgnore(true, "Alice Example", false, false), "Removal applies next update");
+Check(f.ShouldIgnore(true, "New Person", false, false), "Replacement applies");
+f.SetNames(null);
+Check(!f.ShouldIgnore(true, "New Person", false, false), "Clear resets filter");
+Console.WriteLine($"Passed {count} filter checks.");

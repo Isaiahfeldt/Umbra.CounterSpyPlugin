@@ -1,6 +1,7 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using Umbra.Common;
 using Umbra.Game;
@@ -140,7 +141,7 @@ internal sealed class CounterSpyMarker(
                 new() {
                     Key           = key,
                     MapId         = zoneId,
-                    IconId        = obj.ObjectKind == ObjectKind.Player ? pIconId : nIconId,
+                    IconId        = obj is IPlayerCharacter ? pIconId : nIconId,
                     Position      = obj.Position with { Y = obj.Position.Y + markerHeight },
                     Label         = showName ? obj.Name.TextValue : "",
                     SubLabel      = showTargetingYou ? "Targeting you" : null,
